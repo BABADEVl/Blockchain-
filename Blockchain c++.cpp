@@ -5,10 +5,10 @@
 #include <iomanip>
 #include <vector>
 
-// Pour l'affichage
+
 const int WIDTH = 60;
 
-// Calcule du hash avec l'index du block, le previous hash, la data, l'horodatage
+// Fonction pour calculer le hash en fonction de l'index, du precedent hash, des donnees et du timestamp
 std::string calculateHash(int index, const std::string& previousHash, const std::string& data, const std::tm& time)
 {
     std::hash<std::string> hasher;
@@ -23,15 +23,17 @@ std::string calculateHash(int index, const std::string& previousHash, const std:
 class Block
 {
 protected:
-    int index;
-    std::string hash;
+    int index;              
+    std::string hash;        
     std::string previousHash;
-    std::tm time;
-    std::string data;
+    std::tm time;            
+    std::string data;        
 
 public:
+
     Block(int index, const std::string& data, Block* previousBlock = nullptr) : index(index), data(data)
     {
+     
         if (previousBlock == nullptr)
         {
             previousHash = "0";
@@ -45,6 +47,7 @@ public:
         localtime_s(&time, &t);
         hash = calculateHash(index, previousHash, data, time);
     }
+
 
     std::string printBlock() const
     {
@@ -60,26 +63,31 @@ public:
         return ss.str();
     }
 
+
     std::string getHash() const
     {
         return hash;
     }
+
 
     std::string getPreviousHash() const
     {
         return previousHash;
     }
 
+    
     void setPreviousHash(const std::string& newPreviousHash)
     {
         previousHash = newPreviousHash;
     }
 
+    
     void updateHash()
     {
         hash = calculateHash(index, previousHash, data, time);
     }
 
+   
     void modifData(const std::string& newData)
     {
         data = newData;
@@ -87,23 +95,27 @@ public:
     }
 };
 
+
 class Blockchain
 {
 private:
-    std::vector<Block> chain;
+    std::vector<Block> chain;  
 
 public:
+  
     Blockchain()
     {
         chain.push_back(Block(0, "Genesis Block"));
     }
 
+   
     void addBlock(const std::string& data)
     {
-        int index = chain.size();
+        int index = chain.size();  
         Block* previousBlock = &chain.back();
-        chain.push_back(Block(index, data, previousBlock));
+        chain.push_back(Block(index, data, previousBlock)); 
     }
+
 
     void modifBlock(int blockIndex, const std::string& newData)
     {
@@ -113,42 +125,72 @@ public:
             return;
         }
 
-        // Modifier bloc
+    
         chain[blockIndex].modifData(newData);
 
-        // Recalculer les hashs d'après
+   
         for (int i = blockIndex + 1; i < chain.size(); ++i)
         {
-            chain[i].setPreviousHash(chain[i - 1].getHash());
+            chain[i].setPreviousHash(chain[i - 1].getHash()); 
             chain[i].updateHash();
         }
     }
 
-    void printBlockchainACote(const Blockchain& blockchainModife)
+
+    void deleteBlock(int blockIndex)
+    {
+        if (blockIndex <= 0 || blockIndex >= chain.size())
+        {
+            std::cout << "Index du block invalide pour suppression." << std::endl;
+            return;
+        }
+
+  
+        chain.erase(chain.begin() + blockIndex);
+
+
+        for (int i = blockIndex; i < chain.size(); ++i)
+        {
+            if (i == 0)
+            {
+                chain[i].setPreviousHash("0");  
+            }
+            else
+            {
+                chain[i].setPreviousHash(chain[i - 1].getHash());
+            }
+            chain[i].updateHash();  
+        }
+
+        std::cout << "Block " << blockIndex << " a ete supprime." << std::endl;
+    }
+
+  
+    void printBlockchainACote(const Blockchain& blockchainModifie)
     {
         for (size_t i = 0; i < chain.size(); ++i)
         {
-            std::string blockLeft = chain[i].printBlock();
-            std::string blockRight = (i < blockchainModife.chain.size()) ? blockchainModife.chain[i].printBlock() : "";
+            std::string blockLeft = chain[i].printBlock();  
+            std::string blockRight = (i < blockchainModifie.chain.size()) ? blockchainModifie.chain[i].printBlock() : ""; 
 
             std::stringstream leftStream(blockLeft), rightStream(blockRight);
             std::string leftLine, rightLine;
 
-            //Affiche les chaînes ligne par ligne
+
             while (std::getline(leftStream, leftLine) || std::getline(rightStream, rightLine))
             {
                 std::cout << std::left << std::setw(WIDTH) << leftLine
                     << std::setw(WIDTH) << rightLine << "\n";
             }
-            // Séparateur pour esthetique
+
             std::cout << std::string(WIDTH * 2, '-') << "\n";
         }
     }
-    // Copie tous les bloc pour les comparés
+
     Blockchain clone()
     {
         Blockchain newBlockchain;
-        newBlockchain.chain = chain;
+        newBlockchain.chain = chain;  
         return newBlockchain;
     }
 };
@@ -162,17 +204,17 @@ int main()
     myBlockchain.addBlock("Le parfum enivrant des roses emplissait l'air,\n transportant les souvenirs d'un ete lointain.");
     myBlockchain.addBlock("Les eclats de rire resonnaient a travers la foret,\n accompagnant le murmure apaisant du ruisseau voisin.");
 
-    // Cloner la blockchain avant modif
+   
     Blockchain originalBlockchain = myBlockchain.clone();
 
-    // Modif d'un block
-    myBlockchain.modifBlock(2, "TENTATIVE CORRUPTION !!!!!!!!!!");
+    myBlockchain.modifBlock(3, "TENTATIVE CORRUPTION !!!!!!!!!!");
+    myBlockchain.deleteBlock(1);
 
     std::cout << std::left << std::setw(WIDTH) << "Blockchain Originale"
-        << std::setw(WIDTH) << "Blockchain Modifie" << "\n";
+        << std::setw(WIDTH) << "Blockchain Modifiee" << "\n";
     std::cout << std::string(WIDTH * 2, '=') << "\n";
 
-    // Afficher Blockachain
+   
     originalBlockchain.printBlockchainACote(myBlockchain);
 
     return 0;
