@@ -48,6 +48,7 @@ public:
     std::string printBlock() const
     {
         std::stringstream ss;
+        ss << "Block numero : " << index << "\n";
         ss << "hash : " << hash << "\n";
         ss << "previous hash : " << previousHash << "\n";
         ss << "Date actuelle : "
@@ -128,7 +129,6 @@ public:
             return;
         }
         chain[blockIndex].corruptedBlock(corruptedData);
-        std::cout << "Bloc " << blockIndex << " corrompu sans ajuster la chaîne.\n";
     }
 
     void corruptedBlockTime(int blockIndex, std::tm& corruptedTime)
@@ -142,8 +142,14 @@ public:
         std::cout << "Horodatage du bloc " << blockIndex << " corrompu sans ajuster la chaîne.\n";
     }
 
-    void printBlockchainACote(const Blockchain& blockchainModifie)
+    void printBlockchainACote(const Blockchain& blockchainModifie, const std::string& messageOriginal, const std::string& messageModifie)
     {
+        // Affichage message d'intégrité en haut
+        
+        std::cout << std::left << std::setw(WIDTH) << messageOriginal
+            << std::setw(WIDTH) << messageModifie << "\n";
+        std::cout << std::string(WIDTH * 2, '=') << "\n";
+
         for (size_t i = 0; i < chain.size(); ++i)
         {
             std::string blockLeft = chain[i].printBlock();
@@ -162,6 +168,33 @@ public:
         }
     }
 
+    // Vérifie si le hash d'un block est le même que le previous et stock un message en conséquence
+    std::string verifIntegrite()
+    {
+        bool estIntegre = true;
+        std::stringstream message;
+
+        for (size_t i = 1; i < chain.size(); ++i) // on commence à 1 à cause du genesis
+        {
+            if (chain[i].getPreviousHash() != chain[i - 1].getHash())
+            {
+                estIntegre = false;
+                message << "Bloc " << i - 1 << " corrompu !";
+            }
+        }
+
+        if (estIntegre)
+        {
+            message << "La blockchain est integre.";
+        }
+        else
+        {
+            message << "La blockchain n'est pas integre.";
+        }
+
+        return message.str(); 
+    }
+
     Blockchain clone()
     {
         Blockchain newBlockchain;
@@ -178,17 +211,21 @@ int main()
     myBlockchain.addBlock("Les nuages dansaient lentement dans le ciel,\n peignant des formes mysterieuses au-dessus \n de la ville endormie.");
     myBlockchain.addBlock("Le parfum enivrant des roses emplissait l'air,\n transportant les souvenirs d'un ete lointain.");
     myBlockchain.addBlock("Les eclats de rire resonnaient a travers la foret,\n accompagnant le murmure apaisant du ruisseau voisin.");
+    myBlockchain.addBlock("Ceci est une nouvelle donnee");
 
     Blockchain originalBlockchain = myBlockchain.clone();
 
     // Corruption 3ème bloc + changement horodatage au moment de la corruption
-    myBlockchain.corruptedBlock(3, "TENTATIVE CORRUPTION !!!!!!!!!!");
+    myBlockchain.corruptedBlock(2, "TENTATIVE CORRUPTION !!!!!!!!!!");
 
     std::cout << std::left << std::setw(WIDTH) << "Blockchain Originale"
         << std::setw(WIDTH) << "Blockchain Modifiee" << "\n";
     std::cout << std::string(WIDTH * 2, '=') << "\n";
 
-    originalBlockchain.printBlockchainACote(myBlockchain);
+    // Vérification integrite et recup les messages + affichage de l'ensemble
+    std::string messageIntegriteOriginale = originalBlockchain.verifIntegrite();
+    std::string messageIntegriteModifiee = myBlockchain.verifIntegrite();
+    originalBlockchain.printBlockchainACote(myBlockchain, messageIntegriteOriginale, messageIntegriteModifiee);
 
     return 0;
 }
