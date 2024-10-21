@@ -84,6 +84,21 @@ public:
         data = newData;
         updateHash();
     }
+
+    // Corruption bloc : modifie donné + changement horodatage 
+    void corruptedBlock(const std::string& corruptedData)
+    {
+        data = corruptedData;
+        std::time_t t = std::time(nullptr);
+        localtime_s(&time, &t);
+
+        updateHash();
+    }
+
+    void corruptedTime(std::tm& corruptedTime)
+    {
+        time = corruptedTime;
+    }
 };
 
 class Blockchain
@@ -104,54 +119,27 @@ public:
         chain.push_back(Block(index, data, previousBlock));
     }
 
-    void modifBlock(int blockIndex, const std::string& newData)
+    // Corruption bloc 
+    void corruptedBlock(int blockIndex, const std::string& corruptedData)
     {
         if (blockIndex < 0 || blockIndex >= chain.size())
         {
             std::cout << "Index du block invalide." << std::endl;
             return;
         }
-
-        chain[blockIndex].modifData(newData);
-
-        for (int i = blockIndex + 1; i < chain.size(); ++i)
-        {
-            chain[i].setPreviousHash(chain[i - 1].getHash());
-            chain[i].updateHash();
-        }
+        chain[blockIndex].corruptedBlock(corruptedData);
+        std::cout << "Bloc " << blockIndex << " corrompu sans ajuster la chaîne.\n";
     }
 
-    void deleteBlock(int blockIndex)
+    void corruptedBlockTime(int blockIndex, std::tm& corruptedTime)
     {
-        if (blockIndex <= 0 || blockIndex >= chain.size())
+        if (blockIndex < 0 || blockIndex >= chain.size())
         {
-            std::cout << "Index du block invalide pour suppression." << std::endl;
+            std::cout << "Index du block invalide." << std::endl;
             return;
         }
-
-        chain.erase(chain.begin() + blockIndex);
-
-        for (int i = blockIndex; i < chain.size(); ++i)
-        {
-            if (i == 0)
-            {
-                chain[i].setPreviousHash("0");
-            }
-            else
-            {
-                chain[i].setPreviousHash(chain[i - 1].getHash());
-            }
-            chain[i].updateHash();
-        }
-
-        std::cout << "Block " << blockIndex << " a ete supprime." << std::endl;
-    }
-
-    void vidange()
-    {
-        // On garde seulement le block genesis
-        chain.erase(chain.begin() + 1, chain.end());
-        std::cout << "Blockchain vidange sauf le bloc Genesis. \n" << "\n";
+        chain[blockIndex].corruptedTime(corruptedTime);
+        std::cout << "Horodatage du bloc " << blockIndex << " corrompu sans ajuster la chaîne.\n";
     }
 
     void printBlockchainACote(const Blockchain& blockchainModifie)
@@ -193,18 +181,14 @@ int main()
 
     Blockchain originalBlockchain = myBlockchain.clone();
 
-    myBlockchain.modifBlock(3, "TENTATIVE CORRUPTION !!!!!!!!!!");
-    myBlockchain.deleteBlock(1);
+    // Corruption 3ème bloc + changement horodatage au moment de la corruption
+    myBlockchain.corruptedBlock(3, "TENTATIVE CORRUPTION !!!!!!!!!!");
 
     std::cout << std::left << std::setw(WIDTH) << "Blockchain Originale"
         << std::setw(WIDTH) << "Blockchain Modifiee" << "\n";
     std::cout << std::string(WIDTH * 2, '=') << "\n";
 
     originalBlockchain.printBlockchainACote(myBlockchain);
-
-    // Vidange la blockchain
-    myBlockchain.vidange();
-    myBlockchain.printBlockchainACote(myBlockchain);
 
     return 0;
 }
