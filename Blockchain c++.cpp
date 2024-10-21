@@ -139,13 +139,54 @@ public:
             return;
         }
         chain[blockIndex].corruptedTime(corruptedTime);
-        std::cout << "Horodatage du bloc " << blockIndex << " corrompu sans ajuster la chaîne.\n";
+        std::cout << "Horodatage du bloc " << blockIndex << " corrompu sans ajuster la chaine.\n";
+    }
+
+    void deleteBlock(int blockIndex)
+    {
+        if (blockIndex <= 0 || blockIndex >= chain.size())
+        {
+            std::cout << "Index du block invalide pour suppression." << std::endl;
+            return;
+        }
+
+        chain.erase(chain.begin() + blockIndex);
+
+        for (int i = blockIndex; i < chain.size(); ++i)
+        {
+            if (i == 0)
+            {
+                chain[i].setPreviousHash("0");
+            }
+            else
+            {
+                chain[i].setPreviousHash(chain[i - 1].getHash());
+            }
+            chain[i].updateHash();
+        }
+
+        std::cout << "Block " << blockIndex << " a ete supprime." << std::endl;
+    }
+
+    
+    void vidange()
+    {
+        if (chain.size() > 1)
+        {
+            chain.erase(chain.begin() + 1, chain.end());
+            std::cout << "Blockchain vidange sauf le block genesis \n" << std::endl;
+        }
+
+        else
+        {
+            std::cout << "Vidange impossible la Blockchain ne contient que le block genesis" << std::endl;
+        }
     }
 
     void printBlockchainACote(const Blockchain& blockchainModifie, const std::string& messageOriginal, const std::string& messageModifie)
     {
         // Affichage message d'intégrité en haut
-        
+
         std::cout << std::left << std::setw(WIDTH) << messageOriginal
             << std::setw(WIDTH) << messageModifie << "\n";
         std::cout << std::string(WIDTH * 2, '=') << "\n";
@@ -215,8 +256,7 @@ int main()
 
     Blockchain originalBlockchain = myBlockchain.clone();
 
-    // Corruption 3ème bloc + changement horodatage au moment de la corruption
-    myBlockchain.corruptedBlock(2, "TENTATIVE CORRUPTION !!!!!!!!!!");
+    myBlockchain.corruptedBlock(3, "TENTATIVE CORRUPTION !!!!!!!!!!");
 
     std::cout << std::left << std::setw(WIDTH) << "Blockchain Originale"
         << std::setw(WIDTH) << "Blockchain Modifiee" << "\n";
