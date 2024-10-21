@@ -256,6 +256,7 @@ int main()
 
     Blockchain originalBlockchain = myBlockchain.clone();
 
+    myBlockchain.deleteBlock(2);
     myBlockchain.corruptedBlock(3, "TENTATIVE CORRUPTION !!!!!!!!!!");
 
     std::cout << std::left << std::setw(WIDTH) << "Blockchain Originale"
@@ -266,6 +267,9 @@ int main()
     std::string messageIntegriteOriginale = originalBlockchain.verifIntegrite();
     std::string messageIntegriteModifiee = myBlockchain.verifIntegrite();
     originalBlockchain.printBlockchainACote(myBlockchain, messageIntegriteOriginale, messageIntegriteModifiee);
+
+    myBlockchain.vidange();
+    myBlockchain.printBlockchainACote(myBlockchain, messageIntegriteOriginale, messageIntegriteModifiee);
 
     return 0;
 }
