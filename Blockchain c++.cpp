@@ -4,13 +4,17 @@
 #include <sstream>
 #include <iomanip>
 #include <vector>
+#include <thread>
+#include <mutex>
+#include <atomic>
 
 const int WIDTH = 60;
+std::atomic<bool> found(false);  // Variable atomique pour signaler quand un nonce valide est trouvé
+std::mutex outputMutex;  // Mutex pour éviter les conflits d'affichage
 
 // Fonction pour calculer le hash en fonction de l'index, du precedent hash, des donnees et du timestamp
 std::string calculateHash(int index, const std::string& previousHash, const std::string& data, const std::tm& time, int nonce)
 {
-    
     std::hash<std::string> hasher;
     std::stringstream ss;
     ss << index << previousHash << data << std::put_time(&time, "%Y-%m-%d %H:%M:%S") << nonce;
@@ -20,7 +24,38 @@ std::string calculateHash(int index, const std::string& previousHash, const std:
     return hexStream.str();
 }
 
-class Block 
+// Fonction de minage par thread
+void mineNonce(int index, std::string previousHash, std::string data, std::tm time, int difficulty, int offset, int step, int& validNonce)
+{
+    std::string target(difficulty, '0');
+    int nonce = offset;
+    int attempts = 0;  // Compteur de tentatives
+
+    while (!found)
+    {
+        std::string hash = calculateHash(index, previousHash, data, time, nonce);
+        if (hash.substr(0, difficulty) == target)
+        {
+            found = true;
+            validNonce = nonce;  // Stocke le nonce valide
+            std::lock_guard<std::mutex> lock(outputMutex);
+            std::cout << "Nonce found: " << nonce << " with hash: " << hash << std::endl;
+            break;
+        }
+
+        nonce += step;  // Incrément par le "pas" donné à chaque thread
+        attempts++;
+
+        // Afficher toutes les 1000 tentatives
+        if (attempts % 1000 == 0)
+        {
+            std::lock_guard<std::mutex> lock(outputMutex);
+            std::cout << "Thread " << std::this_thread::get_id() << " has tried " << attempts << " nonces." << std::endl;
+        }
+    }
+}
+
+class Block
 {
 protected:
     int index;
@@ -30,13 +65,11 @@ protected:
     std::string data;
     int nonce;
 
-
 public:
     Block(int index, const std::string& data, Block* previousBlock = nullptr)
-        : index(index), data(data), nonce(nonce)
+        : index(index), data(data), nonce(0)
     {
-        if (previousBlock == nullptr) 
-
+        if (previousBlock == nullptr)
         {
             previousHash = "0";
         }
@@ -52,18 +85,26 @@ public:
 
     void minageBlock(int difficulty)
     {
-        std::string target(difficulty, '0');
-        while (true)
-        {
-            hash = calculateHash(index, previousHash, data, time, nonce);
+        int numThreads = std::thread::hardware_concurrency();
+        std::vector<std::thread> threads;
+        int validNonce = -1;  // Initialisation du nonce valide
 
-            if (hash.substr(0, difficulty) == target)
-            {
-                std::cout << "block minee : " << hash << "with nonce " << nonce << std::endl;
-                break;
-            }
-            ++nonce;
+        // Création de threads avec des offsets différents
+        for (int i = 0; i < numThreads; ++i)
+        {
+            threads.emplace_back(mineNonce, index, previousHash, data, time, difficulty, i, numThreads, std::ref(validNonce));
         }
+
+        // Attendre que tous les threads finissent
+        for (auto& th : threads)
+        {
+            if (th.joinable())
+                th.join();
+        }
+
+        nonce = validNonce;  // On stocke le nonce trouvé
+        hash = calculateHash(index, previousHash, data, time, nonce);
+        std::cout << "Block mined with nonce: " << nonce << ", hash: " << hash << std::endl;
     }
 
     std::string printBlock() const
@@ -107,13 +148,11 @@ public:
         updateHash();
     }
 
-    // Corruption bloc : modifie donné + changement horodatage 
     void corruptedBlock(const std::string& corruptedData)
     {
         data = corruptedData;
         std::time_t t = std::time(nullptr);
         localtime_s(&time, &t);
-
         updateHash();
     }
 
@@ -122,6 +161,7 @@ public:
         time = corruptedTime;
     }
 };
+
 
 class Blockchain
 {
